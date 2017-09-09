@@ -38,6 +38,7 @@ type HandlerWrapper struct {
 	handle  Handler
 	enabled bool
 	name    string
+	cmd     string
 }
 
 // Run: message handler callback
@@ -85,7 +86,7 @@ func CreateHandlerRegister() *HandlerRegister {
 }
 
 // Add: add message callback handle to handler register
-func (hr *HandlerRegister) Add(key int, h Handler, name string) error {
+func (hr *HandlerRegister) Add(key int, h Handler, name string, cmd string) error {
 	hr.mu.Lock()
 	defer hr.mu.Unlock()
 	for _, v := range hr.hmap {
@@ -95,7 +96,7 @@ func (hr *HandlerRegister) Add(key int, h Handler, name string) error {
 			}
 		}
 	}
-	hr.hmap[key] = append(hr.hmap[key], &HandlerWrapper{handle: h, enabled: false, name: name})
+	hr.hmap[key] = append(hr.hmap[key], &HandlerWrapper{handle: h, enabled: false, name: name, cmd: cmd})
 	return nil
 }
 

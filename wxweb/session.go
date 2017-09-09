@@ -277,7 +277,6 @@ loop1:
 			break loop1
 		}
 	}
-
 }
 
 func (s *Session) consumer(msg []byte) {
@@ -291,13 +290,17 @@ func (s *Session) consumer(msg []byte) {
 	msgis, _ := jc.GetInterfaceSlice("AddMsgList")
 	for _, v := range msgis {
 		rmsg := s.analize(v.(map[string]interface{}))
-		err, handles := s.HandlerRegister.Get(rmsg.MsgType)
-		if err != nil {
-			logs.Warn(err)
-			continue
-		}
-		for _, v := range handles {
-			go v.Run(s, rmsg)
+		logs.Info(rmsg)
+		// If direct message to bot or @ bot in group chat.
+		if (rmsg.IsGroup == false && rmsg.ToUserName == s.Bot.UserName) || rmsg.At == s.Bot.NickName {
+			err, handles := s.HandlerRegister.Get(rmsg.MsgType)
+			if err != nil {
+				logs.Warn(err)
+				continue
+			}
+			for _, v := range handles {
+				go v.Run(s, rmsg)
+			}
 		}
 	}
 }
@@ -329,6 +332,7 @@ func (s *Session) analize(msg map[string]interface{}) *ReceivedMessage {
 		strings.Contains(rmsg.ToUserName, "@@") {
 		rmsg.IsGroup = true
 		// group message
+		logs.Info("rmsg.OriginContent: ", rmsg.OriginContent)
 		ss := strings.Split(rmsg.OriginContent, ":<br/>")
 		if len(ss) > 1 {
 			rmsg.Who = ss[0]
@@ -343,14 +347,16 @@ func (s *Session) analize(msg map[string]interface{}) *ReceivedMessage {
 		rmsg.Content = rmsg.OriginContent
 	}
 
+	// XXX. Add better logic to understand multiple @
 	if rmsg.MsgType == MSG_TEXT &&
 		len(rmsg.Content) > 1 &&
 		strings.HasPrefix(rmsg.Content, "@") {
 		// @someone
-		ss := strings.Split(rmsg.Content, "\u2005")
-		if len(ss) == 2 {
-			rmsg.At = ss[0] + "\u2005"
-			rmsg.Content = ss[1]
+		rmsg.Content = strings.TrimPrefix(rmsg.Content, "@")
+		ss := strings.Split(rmsg.Content, " ")
+		rmsg.At = ss[0]
+		if len(ss) >= 2 {
+			rmsg.Content = strings.Join(ss[1:], " ")
 		}
 	}
 	return rmsg

@@ -26,37 +26,35 @@ SOFTWARE.
 package laosj
 
 import (
-	"github.com/songtianyi/laosj/spider"
-	"github.com/songtianyi/rrframework/logs"
-	"github.com/songtianyi/wechat-go/wxweb"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/songtianyi/laosj/spider"
+	"github.com/songtianyi/rrframework/logs"
+	"github.com/songtianyi/wechat-go/wxweb"
+)
+
+var (
+	LAOSJ_CMD_PREFIX = "\u9e21"
 )
 
 // register plugin
 func Register(session *wxweb.Session) {
-	session.HandlerRegister.Add(wxweb.MSG_TEXT, wxweb.Handler(listenCmd), "laosj")
+	session.HandlerRegister.Add(wxweb.MSG_TEXT, wxweb.Handler(listenCmd), "laosj", LAOSJ_CMD_PREFIX)
 	if err := session.HandlerRegister.EnableByName("laosj"); err != nil {
 		logs.Error(err)
 	}
 }
 
 func listenCmd(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
-	// contact filter
-	contact := session.Cm.GetContactByUserName(msg.FromUserName)
-	if contact == nil {
-		logs.Error("no this contact, ignore", msg.FromUserName)
-		return
-	}
-	if !strings.Contains(msg.Content, "美女") &&
-		!strings.Contains(strings.ToLower(msg.Content), "sexy") {
+	if !strings.HasPrefix(msg.Content, LAOSJ_CMD_PREFIX) {
 		return
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	uri := "http://www.mzitu.com/zipai/"
+	uri := "http://www.meizitu.com/"
 	s, err := spider.CreateSpiderFromUrl(uri)
 	if err != nil {
 		logs.Error(err)
@@ -64,7 +62,7 @@ func listenCmd(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 	}
 	srcs, _ := s.GetAttr("div.main>div.main-content>div.postlist>div>ul>li>div.comment-body>p>img", "src")
 	if len(srcs) < 1 {
-		logs.Error("cannot get mzitu images")
+		logs.Error("cannot get meizi images")
 		return
 	}
 	img := srcs[r.Intn(len(srcs))]

@@ -23,51 +23,73 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-package gifer
+package za
 
 import (
+	"encoding/json"
+	"errors"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
-	"github.com/songtianyi/laosj/spider"
+	"github.com/jmoiron/jsonq"
 	"github.com/songtianyi/rrframework/logs"
 	"github.com/songtianyi/wechat-go/wxweb"
 )
 
 var (
-	GIFMIAO_CMD_PREFIX = "gif "
+	ZA_CMD_PREFIX = "\u624e "
 )
 
 // Register plugin
 func Register(session *wxweb.Session) {
-	session.HandlerRegister.Add(wxweb.MSG_TEXT, wxweb.Handler(gifer), "gifer", GIFMIAO_CMD_PREFIX)
-	if err := session.HandlerRegister.EnableByName("gifer"); err != nil {
+	session.HandlerRegister.Add(wxweb.MSG_TEXT, wxweb.Handler(za_giphy), "za", ZA_CMD_PREFIX)
+	if err := session.HandlerRegister.EnableByName("za"); err != nil {
 		logs.Error(err)
 	}
 }
 
-func gifer(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
-	if !strings.HasPrefix(msg.Content, GIFMIAO_CMD_PREFIX) {
+func getGifUrl(url string) (string, error) {
+	// Load the URL
+	res, e := http.Get(url)
+	if e != nil {
+		return "", e
+	}
+
+	if res == nil {
+		return "", errors.New("Response is nil")
+	}
+
+	defer res.Body.Close()
+	if res.Request == nil {
+		return "", errors.New("Response.Request is nil")
+	}
+
+	frame := map[string]interface{}{}
+	json.NewDecoder(res.Body).Decode(&frame)
+	jq := jsonq.NewQuery(frame)
+
+	gifUrl, e := jq.String("data", "images", "original", "url")
+	if e != nil {
+		return "", e
+	}
+
+	return gifUrl, nil
+}
+
+func za_giphy(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
+	if !strings.HasPrefix(msg.Content, ZA_CMD_PREFIX) {
 		return
 	}
-	content := strings.TrimPrefix(msg.Content, GIFMIAO_CMD_PREFIX)
-	uri := "http://www.gifmiao.com/search/" + url.QueryEscape(content) + "/3"
-	s, err := spider.CreateSpiderFromUrl(uri)
+	content := strings.TrimPrefix(msg.Content, ZA_CMD_PREFIX)
+	uri := "http://api.giphy.com/v1/gifs/translate?api_key=dc6zaTOxFJmzC&rating=r&s=" + url.QueryEscape(content)
+	logs.Info("giphy translate url: %v", uri)
+	gif, err := getGifUrl(uri)
 	if err != nil {
 		logs.Error(err)
 		return
 	}
-	srcs, _ := s.GetAttr("div.wrap>div#main>ul#waterfall>li.item>div.img_block>a>img.gifImg", "xgif")
-	if len(srcs) < 1 {
-		logs.Error("no gif result for", msg.Content)
-		return
-	}
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	gif := srcs[r.Intn(len(srcs))%16]
 	resp, err := http.Get(gif)
 	if err != nil {
 		logs.Error(err)

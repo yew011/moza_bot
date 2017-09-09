@@ -1,12 +1,14 @@
 package main
 
 import (
+	"time"
+
 	"github.com/songtianyi/rrframework/logs"
 	"github.com/songtianyi/wechat-go/plugins/wxweb/gifer"
 	"github.com/songtianyi/wechat-go/plugins/wxweb/laosj"
-    	"github.com/songtianyi/wechat-go/plugins/wxweb/system"
+	"github.com/songtianyi/wechat-go/plugins/wxweb/system"
+	"github.com/songtianyi/wechat-go/plugins/wxweb/za"
 	"github.com/songtianyi/wechat-go/wxweb"
-	"time"
 )
 
 func main() {
@@ -17,10 +19,11 @@ func main() {
 		return
 	}
 	// load plugins for this session
-//	replier.Register(session)
+	//	replier.Register(session)
 	gifer.Register(session)
 	laosj.Register(session)
 	system.Register(session)
+	za.Register(session)
 
 	// enable by type example
 	if err := session.HandlerRegister.DisableByType(wxweb.MSG_SYS); err != nil {
