@@ -348,6 +348,7 @@ func (s *Session) analize(msg map[string]interface{}) *ReceivedMessage {
 	}
 
 	// XXX. Add better logic to understand multiple @
+	rmsg.Content = strings.Replace(rmsg.Content, "\u2005", " ", -1)
 	if rmsg.MsgType == MSG_TEXT &&
 		len(rmsg.Content) > 1 &&
 		strings.HasPrefix(rmsg.Content, "@") {
