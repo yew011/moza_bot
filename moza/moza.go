@@ -5,6 +5,7 @@ import (
 
 	"github.com/songtianyi/rrframework/logs"
 	"github.com/songtianyi/wechat-go/plugins/wxweb/gifer"
+	"github.com/songtianyi/wechat-go/plugins/wxweb/jav"
 	"github.com/songtianyi/wechat-go/plugins/wxweb/laosj"
 	"github.com/songtianyi/wechat-go/plugins/wxweb/system"
 	"github.com/songtianyi/wechat-go/plugins/wxweb/za"
@@ -21,6 +22,7 @@ func main() {
 	// load plugins for this session
 	//	replier.Register(session)
 	gifer.Register(session)
+	jav.Register(session)
 	laosj.Register(session)
 	system.Register(session)
 	za.Register(session)
