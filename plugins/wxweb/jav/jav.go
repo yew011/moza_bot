@@ -26,7 +26,6 @@ SOFTWARE.
 package jav
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -60,17 +59,16 @@ func jav(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 		logs.Error(err)
 		return
 	}
-	srcs, _ := s.GetText("div.videothumblist>div.videos>div.video>a>div.id")
-	logs.Info("srcs: ", srcs)
+	srcs, _ := s.GetAttr("div.videothumblist>div.videos>div.video>a>img", "src")
 	if len(srcs) < 1 {
 		logs.Error("cannot get most wanted JAV ids")
 		return
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// Jav library always returns 20 results in one page.
-	imgID := strings.ToLower(strings.Replace(srcs[r.Intn(len(srcs))%20], "-", "", -1))
-	javUrl := fmt.Sprintf("http://pics.dmm.co.jp/mono/movie/adult/%s/%spl.jpg", imgID, imgID)
-	resp, err := http.Get(javUrl)
+	imgUrl := "http:" + strings.ToLower(strings.Replace(srcs[r.Intn(len(srcs))%20], "ps.jpg", "pl.jpg", 1))
+	logs.Info("jav imgUrl: ", imgUrl)
+	resp, err := http.Get(imgUrl)
 	if err != nil {
 		logs.Error(err)
 		return
@@ -81,5 +79,5 @@ func jav(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 		return
 	}
 
-	session.SendImgFromBytes(b, javUrl, session.Bot.UserName, wxweb.RealTargetUserName(session, msg))
+	session.SendImgFromBytes(b, imgUrl, session.Bot.UserName, wxweb.RealTargetUserName(session, msg))
 }
