@@ -61,7 +61,7 @@ func jav(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 	}
 	srcs, _ := s.GetAttr("div.videothumblist>div.videos>div.video>a>img", "src")
 	if len(srcs) < 1 {
-		logs.Error("cannot get most wanted JAV ids")
+		logs.Error("cannot get JAV image links")
 		return
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
