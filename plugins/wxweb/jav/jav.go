@@ -73,6 +73,7 @@ func jav(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 		logs.Error(err)
 		return
 	}
+	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logs.Error(err)
