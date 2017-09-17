@@ -26,14 +26,14 @@ SOFTWARE.
 package za
 
 import (
-	"encoding/json"
-	"errors"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
+	"time"
 
-	"github.com/jmoiron/jsonq"
 	"github.com/songtianyi/rrframework/logs"
 	"github.com/songtianyi/wechat-go/wxweb"
 )
@@ -50,56 +50,50 @@ func Register(session *wxweb.Session) {
 	}
 }
 
-func getGifUrl(url string) (string, error) {
-	// Load the URL
-	res, e := http.Get(url)
-	if e != nil {
-		return "", e
-	}
-
-	if res == nil {
-		return "", errors.New("Response is nil")
-	}
-
-	defer res.Body.Close()
-	if res.Request == nil {
-		return "", errors.New("Response.Request is nil")
-	}
-
-	frame := map[string]interface{}{}
-	json.NewDecoder(res.Body).Decode(&frame)
-	jq := jsonq.NewQuery(frame)
-
-	gifUrl, e := jq.String("data", "images", "original", "url")
-	if e != nil {
-		return "", e
-	}
-
-	return gifUrl, nil
-}
-
 func za_giphy(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 	if !strings.HasPrefix(msg.Content, ZA_CMD_PREFIX) {
 		return
 	}
 	content := strings.TrimPrefix(msg.Content, ZA_CMD_PREFIX)
-	uri := "http://api.giphy.com/v1/gifs/translate?api_key=dc6zaTOxFJmzC&rating=r&s=" + url.QueryEscape(content)
-	logs.Info("giphy translate url: %v", uri)
-	gif, err := getGifUrl(uri)
+
+	search, err := http.Get("https://giphy.com/search/" + url.QueryEscape(content))
 	if err != nil {
 		logs.Error(err)
 		return
 	}
-	resp, err := http.Get(gif)
+	defer search.Body.Close()
+	searchBody, err := ioutil.ReadAll(search.Body)
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+	// Crappy RE for extracting image source from search.Body.
+	// One caveat, the WeChat gif upload limit is 1MiB.  So the best
+	// effor is to use the 'downsampled' gif.
+	crappyRE := regexp.MustCompile(`"fixed_width_downsampled": {"url": "([^"']+)",`)
+	matches := crappyRE.FindAll(searchBody, -1)
+	if len(matches) < 1 {
+		logs.Error("cannot get giphy image links")
+		return
+	}
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	gifUrl := crappyRE.FindStringSubmatch(string(matches[r.Intn(len(matches))%20][:]))[1]
+	logs.Info("gifUrl: ", gifUrl)
+	resp, err := http.Get(gifUrl)
 	if err != nil {
 		logs.Error(err)
 		return
 	}
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+	// XXX. Report sending error, normally caused by sending larger than 1MiB data.
 	if msg.FromUserName == session.Bot.UserName {
-		session.SendEmotionFromBytes(body, session.Bot.UserName, msg.ToUserName)
+		session.SendEmotionFromBytes(b, session.Bot.UserName, msg.ToUserName)
 	} else {
-		session.SendEmotionFromBytes(body, session.Bot.UserName, msg.FromUserName)
+		session.SendEmotionFromBytes(b, session.Bot.UserName, msg.FromUserName)
 	}
 }
